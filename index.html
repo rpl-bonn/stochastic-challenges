@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stochastic Challenges: Benchmarking Real-World Robotic Manipulation (CoRL 2026)</title>
+<meta name="description" content="Stochastic challenges standardize a distribution of scenes and tasks instead of a fixed test set, so different robots in different labs can be compared with statistical confidence. Demonstrated on the KALLAX benchmark.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#14171c; --muted:#555c68; --line:#d9dee5;
+  --blue:#1b4f9c; --blue-ink:#ffffff; --yellow:#f4b400; --yellow-soft:#fff2c2;
+  --shelf:#d9b98a; --shelf-edge:#b99466; --cubby:#e8e3d9; --door-white:#f7f7f4; --door-black:#25262b; --door-wood:#c79d68; --door-grey:#b9bcc2;
+  --stretch:#1b4f9c; --spot:#f4b400; --floor:#cfd5dd;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+/* dark mode is opt-in via the toggle; a soft slate rather than near-black */
+:root[data-theme="dark"]{
+  --bg:#2a3342; --surface:#344055; --ink:#f3f5f9; --muted:#bcc5d3; --line:#4b586d;
+  --blue:#a6c9f9; --blue-ink:#10203a; --yellow:#f7c531; --yellow-soft:#4d4522;
+  --shelf:#b89466; --shelf-edge:#8f7149; --cubby:#3d4a5f; --door-white:#e9e9e4; --door-black:#2c2e35; --door-wood:#b98f5a; --door-grey:#9aa2ae;
+  --stretch:#a6c9f9; --spot:#f7c531; --floor:#43516a; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:1.125rem;line-height:1.65;background-color:var(--bg)}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--blue);text-underline-offset:.18em}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,.cell:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+h1,h2,h3{font-family:var(--sans);line-height:1.12;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(1.7rem,3.2vw,2.35rem);font-weight:700;margin-bottom:1rem}
+h3{font-size:1.25rem;font-weight:700;margin-bottom:.4rem}
+p{margin:0 0 1.1rem}
+.wrap{width:min(72rem,100% - 2.5rem);margin-inline:auto}
+.prose{max-width:none;text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+section h2,.sub{text-align:center}
+.twocol p,.steps p,.regime p,figcaption,.cap,.tldr p,footer p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+figcaption{max-width:none}
+footer p{max-width:none;text-align:center}
+section{padding:4.5rem 0 0}
+.sans{font-family:var(--sans)}
+
+/* top bar */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 0;font-family:var(--sans);font-size:.98rem;flex-wrap:wrap}
+.bar a{color:var(--ink);text-decoration:none;margin-right:1.2rem}
+.bar a:hover{text-decoration:underline}
+.bar nav{display:flex;flex-wrap:wrap;row-gap:.3rem}
+.bar .brand{font-weight:700}
+.tbtn{font:inherit;background:none;border:1px solid var(--line);color:var(--ink);padding:.3rem .8rem;border-radius:2rem;cursor:pointer}
+
+/* hero */
+.hero{text-align:center;padding-top:2.2rem}
+.hero h1{max-width:58rem;margin-inline:auto}
+.hero .links{justify-content:center}
+.venue{display:inline-block;font-family:var(--sans);font-weight:600;background:var(--yellow);color:#1a1400;padding:.25rem .8rem;border-radius:.3rem;margin-bottom:1.2rem;font-size:.98rem}
+h1{font-size:clamp(2rem,4.3vw,3.3rem);font-weight:700;margin-bottom:1.4rem}
+.authors{font-family:var(--sans);font-size:1.08rem;line-height:1.7;margin-bottom:.4rem}
+.authors span{white-space:nowrap}
+.authors sup{font-size:.7em}
+.affil{font-family:var(--sans);color:var(--muted);font-size:.98rem;margin-bottom:.3rem}
+.note{font-family:var(--sans);color:var(--muted);font-size:.88rem;margin-bottom:1.6rem}
+.links{display:flex;flex-wrap:wrap;gap:.6rem}
+.btn{font-family:var(--sans);font-weight:600;font-size:1rem;text-decoration:none;padding:.6rem 1.1rem;border-radius:.4rem;border:2px solid var(--ink);color:var(--ink);background:transparent;display:inline-flex;gap:.5rem;align-items:center}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--blue-ink)}
+.btn:hover{text-decoration:underline}
+.btn.is-soon{border-style:dashed;color:var(--muted);border-color:var(--muted);cursor:default;pointer-events:none}
+.btn small{font-weight:500;font-size:.78rem;color:var(--muted)}
+
+/* seeded shelf */
+.stage{max-width:66rem;margin:2.6rem auto 0;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:1.1rem 1.1rem .8rem;font-family:var(--sans)}
+.stage-head{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;margin-bottom:.7rem;flex-wrap:wrap}
+.stage-head b{font-size:1.05rem}
+.stage-head span{color:var(--muted);font-size:.88rem}
+.arena{position:relative;display:grid;grid-template-columns:1fr 2fr 1fr;align-items:end;gap:1.2rem;padding-bottom:.6rem}
+.arena::after{content:"";position:absolute;left:-1.1rem;right:-1.1rem;bottom:0;height:.6rem;background:var(--floor)}
+.rob svg{display:block;width:100%;height:auto}
+.rob-l svg{max-width:8.5rem;margin-inline:auto}
+.rob-r svg{transform:scaleX(-1)}
+.shelf{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;background:var(--shelf);padding:9px;border:2px solid var(--shelf-edge);border-radius:3px;aspect-ratio:4/3;transition:opacity .25s}
+.shelf.swap{opacity:.15}
+.cell{position:relative;isolation:isolate;overflow:hidden;background:var(--cubby);box-shadow:inset 0 4px 9px rgba(0,0,0,.3);cursor:pointer;border-radius:1px;min-width:0}
+.cell.drawer{overflow:visible;clip-path:inset(-10% -8% 0 -8%)}
+.pet{position:absolute;left:50%;bottom:-2%;transform:translate(-50%,118%);animation:catpeek var(--dur,9s) var(--delay,0s) infinite;z-index:1}
+.cat{width:68%}
+.item{width:44%}
+.cell.drawer .pet{bottom:auto;top:7%;z-index:2}
+.cell.empty .cat{animation-name:catsit}
+.cell.empty .item{animation:none;transform:translate(-50%,0);bottom:5%}
+.dfront{position:absolute;inset:0;z-index:3;background:var(--c);transform-origin:left center;animation:doorswing var(--dur,9s) var(--delay,0s) infinite;box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}
+.dfront::after{content:"";position:absolute;right:12%;top:46%;width:9%;aspect-ratio:1;border-radius:50%;background:rgba(0,0,0,.45)}
+.drawers{position:absolute;inset:0;display:flex;flex-direction:column;gap:3px;background:rgba(0,0,0,.3)}
+.drawers i{flex:1;background:var(--c);position:relative;box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}
+.drawers i:first-child{z-index:1}
+.drawers i:last-child{z-index:3;transform-origin:50% 100%;animation:drawerpull var(--dur,9s) var(--delay,0s) infinite}
+.drawers i::after{content:"";position:absolute;left:41%;right:41%;top:44%;height:12%;border-radius:2px;background:rgba(0,0,0,.45)}
+.cell.poke .pet,.cell.poke .dfront,.cell.poke .drawers i:last-child{animation-duration:2.6s;animation-delay:0s;animation-iteration-count:1}
+.cell.poke.empty .cat{animation-name:catpeek}
+.cell.poke.empty .item{animation:none}
+@keyframes catpeek{0%,52%{transform:translate(-50%,118%)}62%,80%{transform:translate(-50%,6%)}91%,100%{transform:translate(-50%,118%)}}
+@keyframes catsit{0%,10%{transform:translate(-50%,118%)}22%,70%{transform:translate(-50%,6%)}84%,100%{transform:translate(-50%,118%)}}
+@keyframes doorswing{0%,52%{transform:scaleX(1)}60%,82%{transform:scaleX(.13)}91%,100%{transform:scaleX(1)}}
+/* a drawer opens toward the viewer: the front grows and casts a shadow */
+@keyframes drawerpull{0%,52%{transform:none;box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}60%,82%{transform:scale(1.13);box-shadow:inset 0 0 0 2px rgba(0,0,0,.12),0 9px 13px rgba(0,0,0,.5)}91%,100%{transform:none;box-shadow:inset 0 0 0 2px rgba(0,0,0,.12)}}
+.eyes{animation:blink 6s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+/* robots */
+.sarm{transform-origin:58px 90px;animation:ext 5s ease-in-out infinite alternate}
+.carriage{animation:lift 7s ease-in-out infinite alternate}
+.spotarm{transform-origin:130px 38px;animation:armswing 4.5s ease-in-out infinite alternate}
+.spotbody{animation:bob 3s ease-in-out infinite alternate}
+@keyframes ext{from{transform:scaleX(.5)}to{transform:scaleX(1)}}
+@keyframes lift{from{transform:translateY(-34px)}to{transform:translateY(40px)}}
+@keyframes armswing{from{transform:rotate(-16deg)}to{transform:rotate(12deg)}}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(2.5px)}}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.2rem 0 .9rem;font-size:.92rem}
+.controls label{color:var(--muted)}
+.controls input[type=number]{width:5rem;font:inherit;padding:.3rem .4rem;border:1px solid var(--line);border-radius:.3rem;background:var(--bg);color:var(--ink)}
+.controls button{font:inherit;font-weight:600;padding:.35rem .8rem;border-radius:.3rem;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer}
+.controls button.ghost{background:transparent;color:var(--ink)}
+.readout{color:var(--muted);font-size:.85rem;margin-left:auto}
+
+/* tldr */
+.tldr{margin-top:3.2rem;background:var(--yellow-soft);border-left:6px solid var(--yellow);padding:1.2rem 1.5rem;border-radius:0 .4rem .4rem 0;font-size:1.22rem;line-height:1.5}
+.tldr p{margin:0}
+
+/* figures */
+figure{margin:2rem 0 0}
+figure .frame{background:#fff;border:1px solid var(--line);border-radius:.4rem;padding:.6rem}
+figcaption{font-size:.98rem;color:var(--muted);margin-top:.6rem;max-width:none;line-height:1.5}
+figcaption b{color:var(--ink)}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:2rem;border-top:3px solid var(--ink)}
+.steps div{padding:1.1rem 1.4rem 0 0}
+.steps div+div{padding-left:1.4rem;border-left:1px solid var(--line)}
+.steps p{font-size:1.02rem;margin:0}
+.regimes{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;margin-top:1.4rem}
+.regime{background:var(--surface);border:1px solid var(--line);padding:1rem 1.1rem;border-radius:.4rem}
+.regime h3{font-size:1.05rem}
+.regime p{font-size:.98rem;margin:.6rem 0 0;color:var(--muted)}
+.seedrows{display:grid;gap:.35rem;font-family:var(--sans);font-size:.85rem}
+.seedrow{display:flex;gap:.25rem;align-items:center}
+.seedrow em{font-style:normal;width:1.2rem;color:var(--muted)}
+.seedrow i{width:1.05rem;height:1.05rem;border-radius:.2rem;background:var(--bg);border:2px solid var(--muted)}
+.seedrow i.sh{background:var(--blue);border-color:var(--blue)}
+.seedrow i.a{border-color:var(--spot);background:var(--spot)}
+.seedrow i.b{border-color:var(--stretch);background:var(--stretch)}
+
+/* math */
+.eq{font-family:"Source Serif 4",Georgia,serif;font-style:italic;font-size:1.28rem;background:var(--surface);border:1px solid var(--line);padding:.9rem 1.2rem;border-radius:.4rem;margin:1.2rem 0;overflow-x:auto;white-space:nowrap}
+.eq sub,.eq sup{font-size:.68em}
+.eq .r{font-style:normal;font-family:var(--sans);font-size:.9rem;color:var(--muted);margin-left:1rem}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:2.4rem}
+
+/* facts */
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:1.4rem;margin:2rem 0 0;font-family:var(--sans)}
+.facts b{display:block;font-size:2.4rem;line-height:1;font-weight:700}
+.facts span{color:var(--muted);font-size:.95rem}
+
+/* results */
+.bars{display:grid;gap:1.6rem;margin-top:1.6rem;font-family:var(--sans)}
+.bargroup h3{margin-bottom:.5rem}
+.barrow{display:grid;grid-template-columns:5.5rem 1fr;align-items:center;gap:.8rem;margin:.35rem 0}
+.track{background:var(--line);height:2rem;border-radius:.25rem;overflow:hidden}
+.fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:.6rem;font-weight:700;color:#10131a;white-space:nowrap}
+.fill.spot{background:var(--spot)}
+.fill.stretch{background:var(--stretch);color:var(--blue-ink)}
+.gap{font-size:.95rem;color:var(--muted);margin-top:.3rem}
+table{border-collapse:collapse;width:100%;font-family:var(--sans);font-size:.98rem;background:var(--surface)}
+th,td{padding:.55rem .8rem;border-bottom:1px solid var(--line);text-align:left}
+th{font-weight:600;background:transparent;border-bottom:2px solid var(--ink)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;margin-top:1rem}
+tr.hl td{background:var(--yellow-soft)}
+.cap{font-size:.95rem;color:var(--muted);margin-top:.6rem}
+
+/* calculator */
+.calc{display:grid;grid-template-columns:1.1fr .9fr;gap:2rem;margin-top:1.6rem;background:var(--surface);border:1px solid var(--line);border-radius:.6rem;padding:1.5rem;font-family:var(--sans)}
+.calc label{display:block;font-size:.95rem;margin-top:.9rem}
+.calc label:first-child{margin-top:0}
+.calc output{font-weight:700;float:right}
+.calc input[type=range]{width:100%;accent-color:var(--blue)}
+.calc .row{display:flex;gap:1rem}
+.calc .row>div{flex:1}
+.calc select{font:inherit;width:100%;padding:.3rem;border-radius:.3rem;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.answer{background:var(--bg);border-radius:.5rem;padding:1.2rem;align-self:start}
+.answer .big{font-size:3.6rem;font-weight:700;line-height:1}
+.split{display:flex;height:1.2rem;border-radius:.25rem;overflow:hidden;margin:1rem 0 .4rem;background:var(--line)}
+.split i{display:block;height:100%}
+.split .s1{background:var(--blue)} .split .s2{background:var(--yellow)}
+.legend{font-size:.85rem;color:var(--muted)}
+.legend b{display:inline-block;width:.7rem;height:.7rem;border-radius:.15rem;margin-right:.3rem}
+
+/* bibtex */
+pre{background:var(--surface);border:1px solid var(--line);padding:1.1rem 1.3rem;border-radius:.4rem;overflow-x:auto;font-size:.88rem;line-height:1.5;margin:0;font-family:ui-monospace,Menlo,Consolas,monospace}
+.copy{margin-top:.7rem}
+
+footer{margin-top:5rem;padding:2.2rem 0 3rem;border-top:1px solid var(--line);font-family:var(--sans);font-size:.95rem;color:var(--muted)}
+footer p{margin:0 0 .5rem;max-width:46rem}
+
+@media (max-width:60rem){
+  .twocol,.calc{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr 1fr}
+  .steps,.regimes{grid-template-columns:1fr}
+  .steps div,.steps div+div{padding:1rem 0;border-left:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:44rem){
+  .arena{grid-template-columns:1fr 1fr;grid-template-areas:"s s" "l r"}
+  .shelf{grid-area:s}.rob-l{grid-area:l}.rob-r{grid-area:r}
+  .rob-l svg{max-width:6rem}.rob-r svg{max-width:11rem;margin-left:auto}
+  .readout{margin-left:0}
+}
+@media (max-width:34rem){
+  .prose,.twocol p,.steps p,.regime p,figcaption,.cap,.tldr p{text-align:left}
+  body{font-size:1.05rem}
+  .barrow{grid-template-columns:4.4rem 1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .cell.empty .cat{transform:translate(-50%,6%)}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="cathead" viewBox="0 0 64 56">
+      <path d="M5 31 C3 15 7 5 12 3 C19 4 27 10 30 16 Z M59 31 C61 15 57 5 52 3 C45 4 37 10 34 16 Z" fill="currentColor"/>
+      <path d="M11 22 C11 15 12 11 14 9 C18 10 22 13 24 17 Z M53 22 C53 15 52 11 50 9 C46 10 42 13 40 17 Z" fill="#f6b3c3"/>
+      <ellipse cx="32" cy="34" rx="29" ry="22" fill="currentColor"/>
+      <ellipse cx="32" cy="43" rx="13" ry="8.5" style="fill:var(--muzzle,transparent)"/>
+      <ellipse cx="17" cy="55" rx="9" ry="6.5" fill="currentColor"/><ellipse cx="47" cy="55" rx="9" ry="6.5" fill="currentColor"/>
+      <ellipse cx="11" cy="41" rx="5" ry="3.2" fill="#ff8fab" opacity=".6"/><ellipse cx="53" cy="41" rx="5" ry="3.2" fill="#ff8fab" opacity=".6"/>
+      <g class="eyes">
+        <ellipse cx="21" cy="33" rx="6.8" ry="7.6" fill="#ffd25a"/><ellipse cx="43" cy="33" rx="6.8" ry="7.6" fill="#ffd25a"/>
+        <ellipse cx="21.3" cy="33.4" rx="4.4" ry="5.6" fill="#17121a"/><ellipse cx="42.7" cy="33.4" rx="4.4" ry="5.6" fill="#17121a"/>
+        <circle cx="19.3" cy="30.2" r="2" fill="#fff"/><circle cx="40.7" cy="30.2" r="2" fill="#fff"/>
+        <circle cx="23" cy="36.4" r="1" fill="#fff"/><circle cx="44.4" cy="36.4" r="1" fill="#fff"/>
+      </g>
+      <path d="M30 40.5 L34 40.5 L32 43 Z" fill="#ff8fab"/>
+      <path d="M32 43 Q30 46.5 27 45 M32 43 Q34 46.5 37 45" stroke="#17121a" stroke-opacity=".55" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <path d="M2 38 L10 39.5 M2 43 L10 42.5 M62 38 L54 39.5 M62 43 L54 42.5" stroke="#aab0ba" stroke-width="1" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="o-mustard" viewBox="0 0 48 56"><rect x="19" y="4" width="10" height="12" rx="3" fill="#d3301f"/><rect x="12" y="14" width="24" height="38" rx="7" fill="#f2c200"/><rect x="15" y="27" width="18" height="13" rx="2" fill="#fff3b0"/><rect x="15" y="31" width="18" height="2.5" fill="#d3301f"/></symbol>
+    <symbol id="o-soup" viewBox="0 0 48 56"><rect x="9" y="12" width="30" height="40" rx="3" fill="#fff" stroke="#c9ccd3"/><rect x="9" y="12" width="30" height="16" rx="3" fill="#d3301f"/><ellipse cx="24" cy="12" rx="15" ry="3" fill="#c3c7cf"/><circle cx="24" cy="38" r="6" fill="#e6b43c"/></symbol>
+    <symbol id="o-banana" viewBox="0 0 48 56"><path d="M6 40 C7 18 26 6 43 11 C32 17 25 27 23 44 C19 52 8 50 6 40 Z" fill="#f7d21e" stroke="#b58a10" stroke-width="1.5" stroke-linejoin="round"/><path d="M41 10 L45 8" stroke="#6b4a1a" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="o-cracker" viewBox="0 0 48 56"><rect x="7" y="9" width="34" height="43" rx="2" fill="#d9432e"/><rect x="12" y="20" width="24" height="16" rx="2" fill="#fff"/><rect x="7" y="42" width="34" height="5" fill="#2f5fb8"/></symbol>
+    <symbol id="o-mug" viewBox="0 0 48 56"><path d="M35 26 h5 a6.5 6.5 0 0 1 0 15 h-5" stroke="#3d7be0" stroke-width="4" fill="none"/><rect x="8" y="16" width="28" height="34" rx="5" fill="#3d7be0"/><ellipse cx="22" cy="16" rx="14" ry="3" fill="#dbe7fb"/></symbol>
+    <symbol id="o-sugar" viewBox="0 0 48 56"><rect x="9" y="8" width="30" height="44" rx="2" fill="#efe0b9"/><rect x="9" y="22" width="30" height="12" fill="#2f5fb8"/><rect x="14" y="26" width="20" height="4" rx="1" fill="#fff"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="bar">
+    <a class="brand" href="#top">Stochastic Challenges</a>
+    <nav aria-label="Sections">
+      <a href="#abstract">Abstract</a><a href="#idea">The idea</a><a href="#kallax">KALLAX benchmark</a><a href="#results">Results</a><a href="#plan">Plan your study</a><a href="#cite">BibTeX</a>
+      <button class="tbtn" id="theme" type="button" aria-label="Toggle dark mode">Dark mode</button>
+    </nav>
+  </header>
+
+  <main id="top">
+  <div class="hero">
+    <span class="venue">CoRL 2026, Austin TX</span>
+    <h1>Benchmarking Real-World Robotic Manipulation through Stochastic Challenges</h1>
+    <p class="authors">
+      <span>Elias Glaßer<sup>1,†</sup></span>, <span>Gülhan Şikaroğlu<sup>1,†</sup></span>, <span>Pavlo Kupyn<sup>1</sup></span>, <span>Marc Pollefeys<sup>2,3</sup></span>, <span>Zuria Bauer<sup>2</sup></span>, <span>Hermann Blum<sup>1,†</sup></span>
+    </p>
+    <p class="affil"><sup>1</sup> University of Bonn &nbsp; <sup>2</sup> ETH Zurich &nbsp; <sup>3</sup> Microsoft</p>
+    <p class="note">† Correspondence: s6elglae@uni-bonn.de, gsikarog@uni-bonn.de, blumh@uni-bonn.de</p>
+    <div class="links">
+      <a class="btn primary" href="https://klxbench.rpl.uni-bonn.de/">Benchmark website</a>
+      <a class="btn is-soon" href="#" aria-disabled="true">arXiv <small>coming soon</small></a>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="stage-head"><b>Draw a seed, get a shelf</b><span>Click a cubby. Something lives in there.</span></div>
+      <div class="controls">
+        <label for="seed">seed s =</label>
+        <input id="seed" type="number" min="0" max="99999" value="9" inputmode="numeric">
+        <button type="button" id="next">Next seed</button>
+        <button type="button" id="rand" class="ghost">Random seed</button>
+        <span class="readout" id="readout" aria-live="polite"></span>
+      </div>
+      <div class="arena">
+        <div class="rob rob-l"><svg viewBox="0 0 100 200" role="img" aria-label="Illustration of a Stretch robot"><ellipse cx="50" cy="197" rx="38" ry="3" fill="rgba(0,0,0,.16)"/>
+  <rect x="45" y="22" width="7" height="150" rx="2" fill="#2b2f36"/>
+  <rect x="38" y="6" width="22" height="15" rx="5" fill="#2b2f36"/><circle cx="49" cy="14" r="3.2" fill="#7fd0ff"/>
+  <g class="carriage"><rect x="39" y="82" width="20" height="16" rx="3" fill="#f06a35"/>
+    <g class="sarm"><rect x="58" y="87" width="36" height="6" rx="3" fill="#59606c"/><rect x="90" y="80" width="4" height="20" rx="2" fill="#2b2f36"/></g></g>
+  <rect x="26" y="168" width="46" height="12" rx="4" fill="#59606c"/>
+  <rect x="20" y="176" width="58" height="17" rx="8" fill="#3b4049"/><circle cx="33" cy="193" r="5.5" fill="#1d2025"/><circle cx="65" cy="193" r="5.5" fill="#1d2025"/></svg></div>
+        <div class="shelf" id="shelf" role="group" aria-label="Randomly configured 3 by 4 KALLAX shelf"></div>
+        <div class="rob rob-r"><svg viewBox="0 0 200 124" role="img" aria-label="Illustration of a Spot robot with an arm"><ellipse cx="100" cy="119" rx="74" ry="3" fill="rgba(0,0,0,.16)"/>
+  <g stroke="var(--spot)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="62,60 52,88 60,114"/><polyline points="76,60 70,88 78,114"/><polyline points="124,60 116,88 124,114"/><polyline points="138,60 134,88 142,114"/></g>
+  <g fill="#1c1f24"><circle cx="60" cy="114" r="5"/><circle cx="78" cy="114" r="5"/><circle cx="124" cy="114" r="5"/><circle cx="142" cy="114" r="5"/>
+    <circle cx="52" cy="88" r="4"/><circle cx="70" cy="88" r="4"/><circle cx="116" cy="88" r="4"/><circle cx="134" cy="88" r="4"/></g>
+  <g class="spotbody"><rect x="48" y="38" width="108" height="30" rx="13" fill="var(--spot)"/><rect x="70" y="45" width="62" height="6" rx="3" fill="#1c1f24"/>
+    <rect x="150" y="43" width="20" height="16" rx="4" fill="#1c1f24"/><circle cx="162" cy="51" r="3" fill="#7fd0ff"/>
+    <g class="spotarm" stroke-linecap="round" fill="none"><polyline points="130,38 152,8 178,18" stroke="var(--spot)" stroke-width="7" stroke-linejoin="round"/><circle cx="130" cy="38" r="5" fill="#1c1f24" stroke="none"/><circle cx="152" cy="8" r="4.5" fill="#1c1f24" stroke="none"/><polyline points="178,10 182,18 178,26" stroke="#1c1f24" stroke-width="4"/></g></g></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tldr prose sans" style="max-width:none">
+    <p><b>TL;DR</b> Don’t standardize the test set, standardize the distribution it is drawn from. Any lab draws seeds, rebuilds those scenes, and runs its own robot. Our variance analysis then tells you how many seeds you need before a difference in success rate means something.</p>
+  </div>
+
+  <figure>
+    <div class="frame"><img src="assets/teaser.jpg" alt="Illustration of two researchers in lab coats watching a Stretch robot in front of a wardrobe and a Spot robot in front of a dresser, asking how to compare these mobile manipulators." width="1600" height="752"></div>
+    <figcaption><b>Figure 1.</b> Stochastic challenges target several desired aspects of robotic benchmarking: (i) system-level innovation, i.e. not restricting evaluation to specific hardware; (ii) local evaluation, avoiding the effort to transport systems and reducing the chance of errors when trying to reproduce methods; (iii) reduced overfitting, testing true generalization instead of pre-known tasks.</figcaption>
+  </figure>
+
+  <section id="abstract">
+    <h2>Abstract</h2>
+    <div class="prose">
+      <p>A challenging bottleneck in manipulation research is reproducibility and comparability of methods in real-world environments. Since manipulation is an interactive task, it cannot be evaluated on a static dataset of observations. Benchmarking in simulation is a common remedy, but cannot cover the whole complexity of real-world tests.</p>
+      <p>This paper proposes a new paradigm of <em>stochastic challenges</em>. Like the well-known YCB objects, it is based on reproducible real-world scenes and therefore allows system-level innovation and comparability between different platforms. Due to their stochastic nature, our challenges however mimic the rigor and surprise of hidden test sets. To this end, we show how different robots in different labs can be compared based on their success rate over different random task samples, if these samples come from the same distribution.</p>
+      <p>We propose stochastic challenges as a general paradigm for robot benchmarking and implement this paradigm in a novel benchmark for mobile manipulation, on which we compare two robots tested in two different labs.</p>
+    </div>
+  </section>
+
+  <section id="idea">
+    <h2>One distribution, many labs</h2>
+    <div class="prose">
+      <p>Fixed object sets such as YCB made manipulation research comparable, but a single hand-picked setup invites overfitting. Centralized competitions need every robot in one room. Recent distributed benchmarks standardize either the robot or the task, and stay on the tabletop.</p>
+      <p>Stochastic challenges standardize a <em>sampled distribution</em> of scenes and tasks. Any lab can rebuild any scene from its seed, but participants only see a small fraction of all possible scenes and cannot know the right answer ahead of time, much like the hidden test set of a dataset benchmark.</p>
+    </div>
+
+    <div class="steps">
+      <div><h3>1. Sample</h3><p>A seeded randomizer turns a seed into a complete configuration specification: which inserts go where, and which objects sit inside.</p></div>
+      <div><h3>2. Reproduce</h3><p>Any lab, with any robot, rebuilds the scene from the spec and runs the task set. Results go back to a central service.</p></div>
+      <div><h3>3. Compare</h3><p>Success is averaged over seeds. If the robots’ confidence intervals separate, the gap is real; if not, you need more seeds.</p></div>
+    </div>
+
+    <figure>
+      <div class="frame"><img src="assets/concept.jpg" alt="Concept diagram: a randomizer produces seeds 47, 48 and 49, each with a configuration specification; two laboratories reproduce the scenes with a Stretch 3 and a Spot robot; success is compared over seeds with A greater than B at p below 0.05 for K equals 30 seeds." width="1700" height="744" loading="lazy"></div>
+      <figcaption><b>Figure 2.</b> Concept overview. Seeded randomization generates reproducible KALLAX manipulation scenes; robots across labs (Stretch 3 and Spot) execute sampled configurations, with outcomes statistically aggregated for robust comparison.</figcaption>
+    </figure>
+
+    <h3 class="sub" style="margin-top:3rem">Share all seeds, some, or none</h3>
+    <div class="prose"><p>Two robots can be run on independent seeds, on identical seeds, or on a mix. Sharing seeds cancels scene difficulty, so it needs fewer scenes. Independent seeds test generalization better. The mixed design trades the two off, depending on how costly it is to rebuild a scene.</p></div>
+    <div class="regimes">
+      <div class="regime"><h3>Independent, p = 0</h3>
+        <div class="seedrows" aria-hidden="true">
+          <div class="seedrow"><em>A</em><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="seedrow"><em>B</em><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i><i class="b"></i></div>
+        </div>
+        <p>Each robot sees its own seeds. Best test of generalization, most seeds needed.</p></div>
+      <div class="regime"><h3>Mixed, p = 0.5</h3>
+        <div class="seedrows" aria-hidden="true">
+          <div class="seedrow"><em>A</em><i class="sh"></i><i class="sh"></i><i class="a"></i><i class="a"></i><i class="a"></i></div>
+          <div class="seedrow"><em>B</em><i class="sh"></i><i class="sh"></i><i class="b"></i><i class="b"></i><i class="b"></i></div>
+        </div>
+        <p>Half of the seeds are shared. A practical compromise, and what we use in the study below.</p></div>
+      <div class="regime"><h3>Fully paired, p = 1</h3>
+        <div class="seedrows" aria-hidden="true">
+          <div class="seedrow"><em>A</em><i class="sh"></i><i class="sh"></i><i class="sh"></i><i class="sh"></i><i class="sh"></i></div>
+          <div class="seedrow"><em>B</em><i class="sh"></i><i class="sh"></i><i class="sh"></i><i class="sh"></i><i class="sh"></i></div>
+        </div>
+        <p>Identical scenes. Statistically most efficient, but the test set is known in advance.</p></div>
+    </div>
+  </section>
+
+  <section id="stats">
+    <h2>Two sources of noise</h2>
+    <div class="twocol">
+      <div>
+        <p>We estimate a robot’s expected success over the whole distribution by averaging over repeated attempts, over the tasks in a scene, and over scenes. The uncertainty of that estimate has two parts.</p>
+        <p><b>Trial noise</b> is what you get even on one fixed scene: some attempts succeed, some fail. More attempts per task, J, shrink it.</p>
+        <p><b>Configuration difficulty</b> is how much success varies from seed to seed. Repeating a scene cannot reduce it. Only more seeds, K, can.</p>
+      </div>
+      <div>
+        <div class="eq" role="math" aria-label="Variance of the benchmark mean equals sigma squared seed plus B over J, all divided by K">Var(μ̂<sub>R</sub>) = ( σ<sup>2</sup><sub>seed</sub> + B / J ) / K</div>
+        <p>As J grows, the variance does not vanish. It settles at the floor σ²<sub>seed</sub>/K, which is why <em>evaluating diverse scenes matters more than repeating the same setup</em>.</p>
+        <div class="eq" role="math" aria-label="Seeds needed per robot to detect a gap delta"><span>K ≥ 2 (z<sub>1−α/2</sub> + z<sub>1−β</sub>)<sup>2</sup> · ( (1 − p) σ<sup>2</sup><sub>seed</sub> + B / J ) / δ<sup>2</sup></span></div>
+        <p>This is the sample-size rule used throughout the paper: seeds per robot needed to detect a true gap δ when a fraction p of seeds is shared.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="kallax">
+    <h2>The KALLAX benchmark</h2>
+    <div class="prose">
+      <p>To make this concrete, we built a mobile manipulation benchmark on IKEA KALLAX shelves. They are cheap, found everywhere, have standardized geometry, and come with doors, drawers and open cubbies to interact with.</p>
+    </div>
+    <div class="twocol" style="margin-top:1.2rem">
+      <div>
+        <h3>Randomizer</h3>
+        <p>A 3 × 4 grid, where each position stays empty with probability 0.5 and otherwise receives one of 82 KALLAX-compatible inserts. Configurations contain about 2.5 times as many door as drawer inserts, and each drawer insert has two drawers. Object-search tasks draw from 79 YCB objects. You can try the randomizer at the top of this page.</p>
+        <h3>Tasks and success</h3>
+        <p>Open a door or drawer, pick a specified object, or place an object in a target cubby. In our study, an opening counts only if the door or drawer moves by at least 10 cm.</p>
+      </div>
+      <div>
+        <h3>Web platform</h3>
+        <p>The <a href="https://klxbench.rpl.uni-bonn.de/">benchmark website</a> generates configurations with seeds, shows setup instructions and object lists, and exports task instances. A partner lab reproduces the scene, runs the tasks and uploads results.</p>
+        <p>A new seed is only released after the result for the previous seed has been submitted, so nobody can cherry-pick easy scenes.</p>
+        <p><a class="btn primary" href="https://klxbench.rpl.uni-bonn.de/">Get your seeds</a></p>
+      </div>
+    </div>
+
+    <figure>
+      <div class="frame"><img src="assets/setup.jpg" alt="Left: a Stretch 3 robot in front of a KALLAX shelf with a cat figure in one cubby. Right: a Spot robot with an arm in front of a different KALLAX configuration." width="1182" height="654" loading="lazy" style="margin-inline:auto;max-width:46rem"></div>
+      <figcaption><b>Figure 3.</b> Experimental setup. Our KALLAX benchmark draws sample configs from the same distribution, which are then recreated in two different labs to evaluate the two different robotic systems.</figcaption>
+    </figure>
+  </section>
+
+  <section id="results">
+    <h2>Can we tell Spot and Stretch apart?</h2>
+    <div class="prose">
+      <p>We ran 568 real-world trials with a Hello Robot Stretch 3 and a Boston Dynamics Spot with arm, in two labs. For doors, Spot ran 62 trials over 6 seeds and Stretch 130 trials over 7 seeds. For drawers, Spot ran 88 trials over 6 seeds and Stretch 288 trials over 8 seeds.</p>
+    </div>
+
+    <div class="bars" role="img" aria-label="Success rates. Doors: Spot 71.1 percent, Stretch 18.0 percent. Drawers: Spot 87.9 percent, Stretch 63.5 percent.">
+      <div class="bargroup"><h3>Door opening</h3>
+        <div class="barrow"><span>Spot</span><div class="track"><div class="fill spot" style="width:71.1%">71.1%</div></div></div>
+        <div class="barrow"><span>Stretch</span><div class="track"><div class="fill stretch" style="width:18.0%;min-width:4rem">18.0%</div></div></div>
+        <div class="gap">Gap 53.1 points, detectable margin 33.3 points. Distinguishable.</div></div>
+      <div class="bargroup"><h3>Drawer opening</h3>
+        <div class="barrow"><span>Spot</span><div class="track"><div class="fill spot" style="width:87.9%">87.9%</div></div></div>
+        <div class="barrow"><span>Stretch</span><div class="track"><div class="fill stretch" style="width:63.5%">63.5%</div></div></div>
+        <div class="gap">Gap 24.4 points, detectable margin 23.2 points. Distinguishable, but close to the boundary.</div></div>
+    </div>
+
+    <h3 class="sub" style="margin-top:3rem">Detectable margin</h3>
+    <div class="prose"><p>Given the seeds we already have, what is the smallest gap we could resolve? With α = 0.10 and 80% power, both gaps are larger than that margin. Sharing half of the seeds (p = 0.5) shrinks the margin further.</p></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Task</th><th class="n">Spot</th><th class="n">Stretch</th><th class="n">Gap</th><th class="n">Margin, independent seeds</th><th class="n">Margin, p = 0.5</th></tr></thead>
+      <tbody>
+        <tr><td>Door</td><td class="n">0.711</td><td class="n">0.180</td><td class="n">0.531</td><td class="n">0.333</td><td class="n">0.256</td></tr>
+        <tr><td>Drawer</td><td class="n">0.879</td><td class="n">0.635</td><td class="n">0.244</td><td class="n">0.232</td><td class="n">0.183</td></tr>
+      </tbody></table></div>
+    <p class="cap">Partial successes count as failures. Welch 95% confidence intervals for the Spot minus Stretch difference are 23.4 to 82.8 points for doors and 4.2 to 44.6 points for drawers. Halving a margin takes roughly four times as many seeds.</p>
+
+    <h3 class="sub" style="margin-top:3rem">A few seeds can mislead</h3>
+    <div class="prose"><p>Success rates swing with the scenes you happen to draw. With few seeds, noise can even reverse the apparent ranking: on drawers, Spot on subset 1 (65.0%) scores below Stretch on subset 3 (70.7%), although Spot is clearly better overall.</p></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Test scenes</th><th class="n">Drawers, Spot</th><th class="n">Drawers, Stretch</th><th class="n">Doors, Spot</th><th class="n">Doors, Stretch</th></tr></thead>
+      <tbody>
+        <tr><td>Same seeds</td><td class="n">92.7%</td><td class="n">58.1%</td><td class="n">86.3%</td><td class="n">12.8%</td></tr>
+        <tr class="hl"><td>Subset 1</td><td class="n">65.0%</td><td class="n">61.9%</td><td class="n">66.7%</td><td class="n">16.8%</td></tr>
+        <tr><td>Subset 2</td><td class="n">100.0%</td><td class="n">51.3%</td><td class="n">75.0%</td><td class="n">20.2%</td></tr>
+        <tr class="hl"><td>Subset 3</td><td class="n">87.5%</td><td class="n">70.7%</td><td class="n">100.0%</td><td class="n">30.0%</td></tr>
+      </tbody></table></div>
+    <p class="cap">Averaged success rates on the same shelf configurations versus random subsets of seeds.</p>
+  </section>
+
+  <section id="plan">
+    <h2>How many seeds does your study need?</h2>
+    <div class="prose"><p>Plug in estimates from a pilot run to plan a comparison with our sample-size rule. The defaults are only illustrative, because σ²<sub>seed</sub> and B depend on your robots and task.</p></div>
+    <div class="calc">
+      <div>
+        <label for="c-delta">Gap to detect, δ <output id="o-delta"></output></label>
+        <input id="c-delta" type="range" min="0.05" max="0.6" step="0.01" value="0.25">
+        <label for="c-sig">Seed variance, σ²<sub>seed</sub> <output id="o-sig"></output></label>
+        <input id="c-sig" type="range" min="0" max="0.12" step="0.005" value="0.04">
+        <label for="c-b">Trial noise, B <output id="o-b"></output></label>
+        <input id="c-b" type="range" min="0.01" max="0.25" step="0.005" value="0.06">
+        <label for="c-j">Attempts per task, J <output id="o-j"></output></label>
+        <input id="c-j" type="range" min="1" max="10" step="1" value="3">
+        <label for="c-p">Fraction of shared seeds, p <output id="o-p"></output></label>
+        <input id="c-p" type="range" min="0" max="1" step="0.05" value="0">
+        <div class="row">
+          <div><label for="c-a">Significance, α</label><select id="c-a"><option value="0.05">0.05</option><option value="0.10" selected>0.10</option></select></div>
+          <div><label for="c-pw">Power, 1 − β</label><select id="c-pw"><option value="0.8" selected>0.80</option><option value="0.9">0.90</option></select></div>
+        </div>
+      </div>
+      <div class="answer" aria-live="polite">
+        <div class="legend">Seeds needed per robot</div>
+        <div class="big" id="ans">12</div>
+        <div class="split" aria-hidden="true"><i class="s1" id="bar1"></i><i class="s2" id="bar2"></i></div>
+        <div class="legend"><b style="background:var(--blue)"></b>Scene difficulty <b style="background:var(--yellow);margin-left:.8rem"></b>Trial noise</div>
+        <p class="legend" id="floor" style="margin:1rem 0 0"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="limits">
+    <h2>Limitations</h2>
+    <div class="prose">
+      <p>A considerable number of trials is needed to resolve a small performance margin. A single researcher rebuilt the shared-seed scenes in both labs, so we do not yet quantify variation between independent teams reconstructing the same configuration. Finally, the benchmark relies on honest, well-calibrated success reporting. Uploading execution videos, and eventually automated VLM-based checks, would improve verifiability.</p>
+    </div>
+  </section>
+
+  <section id="cite">
+    <h2>BibTeX</h2>
+    <pre id="bib">@inproceedings{glasser2026stochastic,
+  title     = {Benchmarking Real-World Robotic Manipulation through Stochastic Challenges},
+  author    = {Gla{\ss}er, Elias and {\c{S}}ikaro{\u{g}}lu, G{\"u}lhan and Kupyn, Pavlo and Pollefeys, Marc and Bauer, Zuria and Blum, Hermann},
+  booktitle = {Conference on Robot Learning (CoRL)},
+  year      = {2026}
+}</pre>
+    <button class="btn copy" type="button" id="copy">Copy BibTeX</button>
+  </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Robot Perception and Learning Lab, University of Bonn, in collaboration with ETH Zurich.</p>
+    <p>No cats were harmed. Several were consulted.</p>
+  </div>
+</footer>
+<script>
+(function(){
+  // ---------- seeded KALLAX shelf ----------
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  var INSERTS=["var(--door-white)","var(--door-black)","var(--door-wood)","var(--door-grey)"];
+  var CATS=[["#2b2b30","#f1ebdf"],["#f3eee2","#ffffff"],["#ec9a45","#fff1dc"],["#8e929c","#eceef1"]];
+  var ITEMS=["o-mustard","o-soup","o-banana","o-cracker","o-mug","o-sugar"];
+  var shelf=document.getElementById("shelf"), readout=document.getElementById("readout"), seedIn=document.getElementById("seed");
+  function cat(c){return '<svg class="pet cat" viewBox="0 0 64 56" style="color:'+c[0]+';--muzzle:'+c[1]+'" aria-hidden="true"><use href="#cathead"/></svg>'}
+  function obj(id){return '<svg class="pet item" viewBox="0 0 48 56" aria-hidden="true"><use href="#'+id+'"/></svg>'}
+  function build(seed){
+    var rnd=mulberry32(seed*2654435761>>>0), html="", doors=0, drawers=0, empty=0, cats=0, objs=0;
+    for(var i=0;i<12;i++){
+      var kind, c=INSERTS[Math.floor(rnd()*INSERTS.length)];
+      if(rnd()<0.5){kind="empty";empty++}
+      else if(rnd()<1/3.5){kind="drawer";drawers++}
+      else{kind="door";doors++}
+      var has=rnd()<0.85, isCat=rnd()<0.55, cc=CATS[Math.floor(rnd()*CATS.length)], it=ITEMS[Math.floor(rnd()*ITEMS.length)];
+      var dur=(7+rnd()*6).toFixed(1)+"s", delay=(rnd()*9).toFixed(1)+"s";
+      var thing=!has?"":isCat?cat(cc):obj(it); if(has){isCat?cats++:objs++}
+      var ins=kind==="door"?'<div class="dfront" style="--c:'+c+'"></div>':kind==="drawer"?'<div class="drawers" style="--c:'+c+'"><i></i><i></i></div>':"";
+      html+='<div class="cell '+kind+'" tabindex="0" role="button" aria-label="'+(kind==="empty"?"Open cubby":kind==="door"?"Door insert":"Drawer insert")+', poke it" style="--dur:'+dur+';--delay:'+delay+'">'+thing+ins+'</div>';
+    }
+    shelf.innerHTML=html;
+    readout.textContent=doors+" doors, "+drawers+" drawer inserts, "+empty+" empty, "+cats+" cats, "+objs+" objects";
+  }
+  function poke(el){
+    if(!el)return;var c=el.closest(".cell");if(!c)return;
+    c.classList.remove("poke");void c.offsetWidth;c.classList.add("poke");
+    setTimeout(function(){c.classList.remove("poke")},2700);
+  }
+  shelf.addEventListener("click",function(e){poke(e.target)});
+  shelf.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();poke(e.target)}});
+  function setSeed(s){
+    s=Math.max(0,Math.min(99999,parseInt(s,10)||0));seedIn.value=s;
+    shelf.classList.add("swap");setTimeout(function(){build(s);shelf.classList.remove("swap")},180);
+  }
+  document.getElementById("next").onclick=function(){setSeed((parseInt(seedIn.value,10)||0)+1)};
+  document.getElementById("rand").onclick=function(){setSeed(Math.floor(Math.random()*100000))};
+  seedIn.addEventListener("change",function(){setSeed(seedIn.value)});
+  build(9);
+
+  // ---------- sample-size calculator ----------
+  function qnorm(p){
+    var a=[-39.69683028665376,220.9460984245205,-275.9285104469687,138.357751867269,-30.66479806614716,2.506628277459239],
+        b=[-54.47609879822406,161.5858368580409,-155.6989798598866,66.80131188771972,-13.28068155288572],
+        c=[-0.007784894002430293,-0.3223964580411365,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783],
+        d=[0.007784695709041462,0.3224671290700398,2.445134137142996,3.754408661907416],q,r;
+    if(p<0.02425){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+    if(p>1-0.02425){q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+    q=p-0.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
+  }
+  var ids=["delta","sig","b","j","p"], el={};
+  ids.forEach(function(k){el[k]=document.getElementById("c-"+k);el["o"+k]=document.getElementById("o-"+k)});
+  function calc(){
+    var d=+el.delta.value,s=+el.sig.value,b=+el.b.value,j=+el.j.value,p=+el.p.value;
+    var al=+document.getElementById("c-a").value,pw=+document.getElementById("c-pw").value;
+    el.odelta.textContent=d.toFixed(2);el.osig.textContent=s.toFixed(3);el.ob.textContent=b.toFixed(3);el.oj.textContent=j;el.op.textContent=p.toFixed(2);
+    var z=qnorm(1-al/2)+qnorm(pw), scene=(1-p)*s, trial=b/j, k=Math.ceil(2*z*z*(scene+trial)/(d*d));
+    document.getElementById("ans").textContent=Math.max(k,1);
+    var tot=scene+trial||1;document.getElementById("bar1").style.width=(100*scene/tot)+"%";document.getElementById("bar2").style.width=(100*trial/tot)+"%";
+    var fl=Math.ceil(2*z*z*scene/(d*d));
+    document.getElementById("floor").textContent=scene>0?"Even with unlimited attempts per task you would still need at least "+fl+" seeds per robot. Sharing more seeds lowers that floor.":"With fully paired seeds, only trial noise remains, so more attempts per task keep helping.";
+  }
+  document.querySelectorAll(".calc input,.calc select").forEach(function(n){n.addEventListener("input",calc)});calc();
+
+  // ---------- theme + copy ----------
+  var root=document.documentElement,tb=document.getElementById("theme");
+  function isDark(){return root.dataset.theme==="dark"}
+  function lab(){tb.textContent=isDark()?"Light mode":"Dark mode"}
+  tb.onclick=function(){root.dataset.theme=isDark()?"light":"dark";lab()};lab();
+  document.getElementById("copy").onclick=function(){
+    var t=document.getElementById("bib").textContent,b=this;
+    function done(){b.textContent="Copied";setTimeout(function(){b.textContent="Copy BibTeX"},1800)}
+    try{navigator.clipboard.writeText(t).then(done,function(){})}catch(e){}
+  };
+})();
+</script>
+</body>
+</html>
